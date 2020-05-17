@@ -1,76 +1,80 @@
 # coding:UTF-8
-import json
-import requests
+import sys
+from MouseClient import Mouse, MouseError
 
-class Mouse(object):
 
-    def __init__(self):
-        self.URL = "http://localhost:8000/maze/v1"
-        #self.URL = "https://www.osumoi-stdio.com/maze/v1"
-        self.API_KEY = "3b519d0a7f3782c67ba45e0fd4c81b1b1233b39c506b7ef88470218e9464dcf2"
-        #self.API_KEY = "29d16337242edfcc24caa6e5a36bed5a0107d48e5af22e950ff4baa24cd5dcdd"
-        self.token = None
-        self.now_vec = 1
-
-    def start(self, map_id):
-        req_url = "{}/start/{}/{}".format(self.URL, self.API_KEY, map_id)
-
-        r = requests.get(req_url)
-        data = r.json()
-
-        self.token = data['token']
-        return data
-
-    def sensor(self):
-        req_url = "{}/sensor/{}".format(self.URL, self.token)
-
-        r = requests.get(req_url)
-        data = r.json()
-        return data['sensor']
-
-    def turn_left(self):
-        req_url = "{}/turn_left/{}".format(self.URL, self.token)
-        r = requests.get(req_url)
-        data = r.json()
-        return data
-
-    def turn_right(self):
-        req_url = "{}/turn_right/{}".format(self.URL, self.token)
-        r = requests.get(req_url)
-        data = r.json()
-        return data
-
-    def go_straight(self):
-        req_url = "{}/go_straight/{}".format(self.URL, self.token)
-        r = requests.get(req_url)
-        data = r.json()
-        return data
+def left_run(mouse):
+    sensor = mouse.sensor()
+    left = sensor[0]
+    front = sensor[1]
+    right = sensor[2]
+    if left == 0 and front == 0 and right == 0:
+        # 全部OK
+        mouse.turn_left()
+        
+        mouse.go_straight()
+        
+    elif left == 0 and front == 0 and right == 1:
+        # 左と前がOK
+        mouse.turn_left()
+        
+        mouse.go_straight()
+        
+    elif left == 0 and front == 1 and right == 0:
+        # 前だけNG
+        mouse.turn_left()
+        
+        mouse.go_straight()
+        
+    elif left == 0 and front == 1 and right == 1:
+        #  左だけOK
+        mouse.turn_left()
+        
+        mouse.go_straight()
+        
+    elif left == 1 and front == 0 and right == 0:
+        # 前と右がOK
+        mouse.go_straight()
+        
+    elif left == 1 and front == 0 and right == 1:
+        # 前だけOK
+        mouse.go_straight()
+        
+    elif left == 1 and front == 1 and right == 0:
+        # 右だけOK
+        mouse.turn_right()
+        
+        mouse.go_straight()
+        
+    else:
+        # 全部だめ
+        mouse.turn_right()
+        
+        mouse.turn_right()
+        
+        mouse.go_straight()
+        
+    if mouse.is_goal() == 1:
+        print("ゴールしました")
 
 
 if __name__ == '__main__':
     print("client")
-    mouse = Mouse()
-    ret = mouse.start(1)
-    print(ret)
-    token = ret["token"]
+    #ローカルホスト
+    mouse = Mouse("3b519d0a7f3782c67ba45e0fd4c81b1b1233b39c506b7ef88470218e9464dcf2",
+                  url="http://localhost:8000/maze/v1")
+    # 本サイト
+    #mouse = Mouse("29d16337242edfcc24caa6e5a36bed5a0107d48e5af22e950ff4baa24cd5dcdd")
+    try:
+        mouse.start(10)
+    except MouseError as e:
+        print(e)
 
-    for i in range(100):
-        print("{}ターン目".format(i+1))
-        sensor = mouse.sensor()
-        print(sensor)
-        left = sensor[0]
-        front = sensor[1]
-        right = sensor[2]
-        print(mouse.go_straight())
-        if right == 0:
-            print("右を向きます")
-            mouse.turn_right()
-        elif front == 0:
-            print("直進します")
-            mouse.go_straight()
-        elif left == 0:
-            print("左を向きます")
-            mouse.turn_left()
-        else:
-            mouse.turn_right()
-
+    for i in range(mouse.max_turn):
+        while True:
+            try:
+                left_run(mouse)
+            except:
+                print("ステップオーバー")
+                break
+    print("ターンオーバー")
